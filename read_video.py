@@ -9,62 +9,6 @@ import numpy as np
 from imutils.video import FPS
 from imutils.video import FileVideoStream
 
-
-# class FileVideoStream:
-#
-#     def __init__(self, path, queue_size=128):
-#         # initialize the file video stream along with the boolean
-#         # used to indicate if the thread should be stopped or not
-#         # self.stream = cv2.VideoCapture(path)
-#         self.stream = FileVideoStream(path)
-#         self.stopped = False
-#
-#         # initialize the queue used to store frames read from
-#         # the video file
-#         self.Q = Queue(maxsize=queue_size)
-#
-#     def update(self):
-#         # keep looping infinitely
-#         while True:
-#             # if the thread indicator variable is set, stop the
-#             # thread
-#             if self.stopped:
-#                 return
-#
-#             # otherwise, ensure the queue has room in it
-#             if not self.Q.full():
-#                 # read the next frame from the file
-#                 (grabbed, frame) = self.stream.read()
-#
-#                 # if the `grabbed` boolean is `False`, then we have
-#                 # reached the end of the video file
-#                 if not grabbed:
-#                     self.stop()
-#                     return
-#
-#                 # add the frame to the queue
-#                 self.Q.put(frame)
-#
-#     def read(self):
-#         return self.Q.get()
-#
-#     def more(self):
-#         # return True if there are still frames in the queue
-#         return self.Q.qsize() > 0
-#
-#     def start(self):
-#         # start a thread to read frames from the file video stream
-#         t = Thread(target=self.update(), args=())
-#         t.daemon = True
-#         t.start()
-#         return self
-#
-#     def stop(self):
-#         # indicate that the thread should be stopped
-#         self.stopped = True
-
-
-
 if __name__ == '__main__':
 
     # construct the argument parse and parse the arguments
@@ -95,15 +39,17 @@ if __name__ == '__main__':
     # and initialize the FPS counter
     print("[INFO] starting video stream...")
     fvs = FileVideoStream(path=args["video"]).start()
-    time.sleep(2.0)
+
+    # originally there is time.sleep() to avoid that the queue in fvs is empty, so while sleeping, the queue would be filled up with frames, if you comment this line, the queue is empty
+    # But right now there is no need for time.sleep(1.0) because fvs.running() already check if there is more in the queue
     fps = FPS().start()
 
     # loop over the frames from the video stream
-    while fvs.more():
+    while fvs.running():
         # grab the frame from the threaded video stream and resize it
         # to have a maximum width of 400 pixels
         frame = fvs.read()
-        frame = imutils.resize(frame, width=400)
+        frame = imutils.resize(frame, width=1000)
 
         # grab the frame dimensions and convert it to a blob
         (h, w) = frame.shape[:2]
