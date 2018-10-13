@@ -7,35 +7,11 @@ import imutils
 import time
 import cv2
 
-
-
-
-
-def real_time_video():
-    window_name = 'Test'
-    cv2.namedWindow(window_name)
-    cap = cv2.VideoCapture(0)
-
-    if cap.isOpened():
-        ret, frame = cap.read()
-    else:
-        ret = False
-
-    while ret:
-        ret, frame = cap.read()
-        cv2.imshow(window_name, frame)
-        if cv2.waitKey(1) == 27:
-            break
-
-    cv2.destroyWindow(window_name)
-    cap.release()
-
-
 if __name__ == '__main__':
 
     # construct the argument parse and parse the arguments
     ap = argparse.ArgumentParser()
-    ap.add_argument("-p", "--prototxt", required=True,
+    ap.add_argument("-f", "--cfg", required=True,
                     help="path to Caffe 'deploy' prototxt file")
     ap.add_argument("-m", "--model", required=True,
                     help="path to Caffe pre-trained model")
@@ -45,15 +21,17 @@ if __name__ == '__main__':
 
     # initialize the list of class labels MobileNet SSD was trained to
     # detect, then generate a set of bounding box colors for each class
-    CLASSES = ["background", "aeroplane", "bicycle", "bird", "boat",
-               "bottle", "bus", "car", "cat", "chair", "cow", "diningtable",
-               "dog", "horse", "motorbike", "person", "pottedplant", "sheep",
-               "sofa", "train", "tvmonitor"]
+    with open("./yolo_class.txt") as fopen:
+        CLASSES = fopen.readlines()
+        for index in range(0, len(CLASSES)):
+            CLASSES[index] = CLASSES[index].replace("\n", "")
     COLORS = np.random.uniform(0, 255, size=(len(CLASSES), 3))
 
     # load our serialized model from disk
     print("[INFO] loading model...")
-    net = cv2.dnn.readNetFromCaffe(args["prototxt"], args["model"])
+    net = cv2.dnn.readNet(model=args["model"], config=args["cfg"], framework='darknet')
+    net.setPreferableBackend(cv2.dnn.DNN_BACKEND_OPENCV)
+    net.setPreferableTarget(cv2.dnn.DNN_TARGET_OPENCL)
 
     # initialize the video stream, allow the cammera sensor to warmup,
     # and initialize the FPS counter
@@ -67,23 +45,22 @@ if __name__ == '__main__':
         # grab the frame from the threaded video stream and resize it
         # to have a maximum width of 400 pixels
         frame = vs.read()
-        frame = imutils.resize(frame, width=400)
+        frame = imutils.resize(frame, width=1000)
 
         # grab the frame dimensions and convert it to a blob
         (h, w) = frame.shape[:2]
-        blob = cv2.dnn.blobFromImage(cv2.resize(frame, (300, 300)),
-                                     0.007843, (300, 300), 127.5)
-
+        blob = cv2.dnn.blobFromImage(cv2.resize(frame, (416, 416)),
+                                     1.0 / 127.5, (416, 416), (0, 0, 0), swapRB=True, crop=False)
         # pass the blob through the network and obtain the detections and
         # predictions
         net.setInput(blob)
         detections = net.forward()
 
         # loop over the detections
-        for i in np.arange(0, detections.shape[2]):
+        for detection in detections:
             # extract the confidence (i.e., probability) associated with
             # the prediction
-            confidence = detections[0, 0, i, 2]
+            confidence = np.max(detection[5:])
 
             # filter out weak detections by ensuring the `confidence` is
             # greater than the minimum confidence
